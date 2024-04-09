@@ -1103,7 +1103,7 @@ public class TableConfigUtilsTest {
     }
 
     tableConfig = new TableConfigBuilder(TableType.OFFLINE).setTableName(TABLE_NAME)
-        .setNoDictionaryColumns(Arrays.asList("myCol1")).build();
+        .setNoDictionaryColumns(Arrays.asList("myCol1")).setColumnMajorSegmentBuilderEnabled(false).build();
     try {
       // Enable forward index disabled flag for a raw column. This should succeed as though the forward index cannot
       // be rebuilt without a dictionary, the constraint to have a dictionary has been lifted.
@@ -1144,7 +1144,8 @@ public class TableConfigUtilsTest {
     }
 
     tableConfig = new TableConfigBuilder(TableType.OFFLINE).setTableName(TABLE_NAME)
-        .setNoDictionaryColumns(Arrays.asList("myCol1")).setInvertedIndexColumns(Arrays.asList("myCol2")).build();
+        .setNoDictionaryColumns(Arrays.asList("myCol1")).setInvertedIndexColumns(Arrays.asList("myCol2"))
+        .setColumnMajorSegmentBuilderEnabled(false).build();
     try {
       // Enable forward index disabled flag for a column with inverted index
       Map<String, String> fieldConfigProperties = new HashMap<>();
@@ -1160,7 +1161,7 @@ public class TableConfigUtilsTest {
 
     tableConfig = new TableConfigBuilder(TableType.OFFLINE).setTableName(TABLE_NAME)
         .setNoDictionaryColumns(Arrays.asList("myCol1")).setInvertedIndexColumns(Arrays.asList("myCol2"))
-        .setSortedColumn("myCol2").build();
+        .setColumnMajorSegmentBuilderEnabled(false).setSortedColumn("myCol2").build();
     try {
       // Enable forward index disabled flag for a column with inverted index and is sorted
       Map<String, String> fieldConfigProperties = new HashMap<>();
@@ -1176,7 +1177,7 @@ public class TableConfigUtilsTest {
 
     tableConfig = new TableConfigBuilder(TableType.OFFLINE).setTableName(TABLE_NAME)
         .setNoDictionaryColumns(Arrays.asList("myCol1")).setInvertedIndexColumns(Arrays.asList("myCol2"))
-        .setRangeIndexColumns(Arrays.asList("myCol2")).build();
+        .setColumnMajorSegmentBuilderEnabled(false).setRangeIndexColumns(Arrays.asList("myCol2")).build();
     try {
       // Enable forward index disabled flag for a multi-value column with inverted index and range index
       Map<String, String> fieldConfigProperties = new HashMap<>();
@@ -1190,11 +1191,12 @@ public class TableConfigUtilsTest {
       Assert.fail("Should fail for MV myCol2 with forward index disabled but has range and inverted index");
     } catch (Exception e) {
       Assert.assertEquals(e.getMessage(), "Feature not supported for multi-value columns with range index. "
-          + "Cannot disable forward index for column myCol2. Disable range index on this column to use this feature");
+          + "Cannot disable forward index for column myCol2. Disable range index on this column to use this feature.");
     }
 
     tableConfig = new TableConfigBuilder(TableType.OFFLINE).setTableName(TABLE_NAME)
-        .setInvertedIndexColumns(Arrays.asList("myCol1")).setRangeIndexColumns(Arrays.asList("myCol1")).build();
+        .setInvertedIndexColumns(Arrays.asList("myCol1")).setRangeIndexColumns(Arrays.asList("myCol1"))
+        .setColumnMajorSegmentBuilderEnabled(false).build();
     try {
       // Enable forward index disabled flag for a singe-value column with inverted index and range index v1
       Map<String, String> fieldConfigProperties = new HashMap<>();
@@ -1210,7 +1212,7 @@ public class TableConfigUtilsTest {
     } catch (Exception e) {
       Assert.assertEquals(e.getMessage(), "Feature not supported for single-value columns with range index version "
           + "< 2. Cannot disable forward index for column myCol1. Either disable range index or create range index "
-          + "with version >= 2 to use this feature");
+          + "with version >= 2 to use this feature.");
     }
 
     tableConfig = new TableConfigBuilder(TableType.OFFLINE).setTableName(TABLE_NAME)
@@ -1246,7 +1248,7 @@ public class TableConfigUtilsTest {
     }
 
     tableConfig = new TableConfigBuilder(TableType.OFFLINE).setTableName(TABLE_NAME)
-        .setNoDictionaryColumns(Arrays.asList("myCol2")).build();
+        .setNoDictionaryColumns(Arrays.asList("myCol2")).setColumnMajorSegmentBuilderEnabled(false).build();
     try {
       // Enable forward index disabled flag for a column with FST index and disable dictionary
       Map<String, String> fieldConfigProperties = new HashMap<>();
@@ -1264,7 +1266,8 @@ public class TableConfigUtilsTest {
     }
 
     tableConfig = new TableConfigBuilder(TableType.OFFLINE).setTableName(TABLE_NAME)
-        .setNoDictionaryColumns(Arrays.asList("intCol")).setRangeIndexColumns(Arrays.asList("intCol")).build();
+        .setNoDictionaryColumns(Arrays.asList("intCol")).setRangeIndexColumns(Arrays.asList("intCol"))
+        .setColumnMajorSegmentBuilderEnabled(false).build();
     try {
       // Enable forward index disabled flag for a column with FST index and disable dictionary
       Map<String, String> fieldConfigProperties = new HashMap<>();
@@ -1276,6 +1279,25 @@ public class TableConfigUtilsTest {
       TableConfigUtils.validate(tableConfig, schema);
     } catch (Exception e) {
       Assert.fail("Range index with forward index disabled no dictionary column is allowed");
+    }
+
+    // Enabling columnar segment generation while disabling forward index will make the validation failed.
+    tableConfig = new TableConfigBuilder(TableType.OFFLINE).setTableName(TABLE_NAME)
+        .setNoDictionaryColumns(Arrays.asList("intCol")).setRangeIndexColumns(Arrays.asList("intCol"))
+        .setColumnMajorSegmentBuilderEnabled(true).build();
+    try {
+      // Enable forward index disabled flag for a column with inverted index index and disable dictionary
+      Map<String, String> fieldConfigProperties = new HashMap<>();
+      fieldConfigProperties.put(FieldConfig.FORWARD_INDEX_DISABLED, Boolean.TRUE.toString());
+      FieldConfig fieldConfig =
+          new FieldConfig("intCol", FieldConfig.EncodingType.RAW, FieldConfig.IndexType.INVERTED, null, null, null,
+              fieldConfigProperties);
+      tableConfig.setFieldConfigList(Arrays.asList(fieldConfig));
+      TableConfigUtils.validate(tableConfig, schema);
+    } catch (Exception e) {
+      Assert.assertEquals(e.getMessage(),
+          "Columnar segment generation is enabled. Cannot disable forward index for column intCol. Disable columnar "
+              + "segment generation to use this feature.");
     }
   }
 

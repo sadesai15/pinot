@@ -1310,11 +1310,11 @@ public final class TableConfigUtils {
     if (indexingConfig.getRangeIndexColumns() != null && indexingConfig.getRangeIndexColumns().contains(columnName)) {
       Preconditions.checkState(fieldSpec.isSingleValueField(), String.format("Feature not supported for multi-value "
           + "columns with range index. Cannot disable forward index for column %s. Disable range index on this "
-          + "column to use this feature", columnName));
+          + "column to use this feature.", columnName));
       Preconditions.checkState(indexingConfig.getRangeIndexVersion() == BitSlicedRangeIndexCreator.VERSION,
           String.format("Feature not supported for single-value columns with range index version < 2. Cannot disable "
               + "forward index for column %s. Either disable range index or create range index with"
-              + " version >= 2 to use this feature", columnName));
+              + " version >= 2 to use this feature.", columnName));
     }
 
     Preconditions.checkState(!indexingConfig.isOptimizeDictionaryForMetrics() && !indexingConfig.isOptimizeDictionary(),
@@ -1334,6 +1334,12 @@ public final class TableConfigUtils {
           columnName,
           hasDictionary ? "enabled" : "disabled", hasInvertedIndex ? "enabled" : "disabled");
     }
+
+    // For tables with columnMajorSegmentBuilderEnabled being true, the forward index should not be disabled.
+    Preconditions.checkState(!indexingConfig.isColumnMajorSegmentBuilderEnabled(), String.format(
+        "Columnar segment generation is enabled. Cannot disable forward index for column %s. Disable columnar segment"
+            + " generation to use this feature.",
+        columnName));
   }
 
   private static void sanitize(TableConfig tableConfig) {
